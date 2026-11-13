@@ -331,16 +331,18 @@ static float DecodeSignedComponent(const uint8_t *p, int format) {
 	}
 }
 
+// Match PPSSPP's Vec3ByMatrix43 layout (GPU/Math3D.h).  PSP 3x4 matrices
+// store each output axis in the corresponding 4-float column.
 static void TransformPoint(const float *matrix, const float in[3], float out[3]) {
-	out[0] = matrix[0] * in[0] + matrix[1] * in[1] + matrix[2] * in[2] + matrix[3];
-	out[1] = matrix[4] * in[0] + matrix[5] * in[1] + matrix[6] * in[2] + matrix[7];
-	out[2] = matrix[8] * in[0] + matrix[9] * in[1] + matrix[10] * in[2] + matrix[11];
+	out[0] = matrix[0] * in[0] + matrix[3] * in[1] + matrix[6] * in[2] + matrix[9];
+	out[1] = matrix[1] * in[0] + matrix[4] * in[1] + matrix[7] * in[2] + matrix[10];
+	out[2] = matrix[2] * in[0] + matrix[5] * in[1] + matrix[8] * in[2] + matrix[11];
 }
 
 static void TransformDirection(const float *matrix, const float in[3], float out[3]) {
-	out[0] = matrix[0] * in[0] + matrix[1] * in[1] + matrix[2] * in[2];
-	out[1] = matrix[4] * in[0] + matrix[5] * in[1] + matrix[6] * in[2];
-	out[2] = matrix[8] * in[0] + matrix[9] * in[1] + matrix[10] * in[2];
+	out[0] = matrix[0] * in[0] + matrix[3] * in[1] + matrix[6] * in[2];
+	out[1] = matrix[1] * in[0] + matrix[4] * in[1] + matrix[7] * in[2];
+	out[2] = matrix[2] * in[0] + matrix[5] * in[1] + matrix[8] * in[2];
 }
 
 static void Normalize(float v[3]) {
@@ -616,7 +618,6 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 			std::copy(n, n + 3, skinnedNormal);
 		}
 
-		float world[12];
 		const float *worldMatrix = state.worldValid ? state.worldMatrix : nullptr;
 		if (worldMatrix) {
 			TransformPoint(worldMatrix, skinnedPosition, p);
