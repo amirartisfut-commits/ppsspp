@@ -471,7 +471,7 @@ static bool AddTextureMaterial(ModelOutput *model, const Path &texturePath, uint
 
 	std::ostringstream mat;
 	mat << "{\"name\":\"" << JsonEscape(texturePath.GetFilename())
-		<< "\",\"doubleSided\":true,\"pbrMetallicRoughness\":{\"baseColorTexture\":{\"index\":"
+		<< "\",\"doubleSided\":true,\"alphaMode\":\"BLEND\",\"pbrMetallicRoughness\":{\"baseColorTexture\":{\"index\":"
 		<< textureIndex << "},\"metallicFactor\":0,\"roughnessFactor\":1}}";
 	model->materialsJson.push_back(mat.str());
 	model->materialByPath[key] = material;
