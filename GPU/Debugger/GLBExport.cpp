@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -50,6 +51,8 @@ struct VertexLayout {
 	int positionFormat = 0;
 	int morphCount = 1;
 };
+
+static std::string JsonEscape(const std::string &value);
 
 struct GPUStateSnapshot {
 	uint32_t vertexType = 0;
