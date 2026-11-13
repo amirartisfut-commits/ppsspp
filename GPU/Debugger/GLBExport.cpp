@@ -845,7 +845,18 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 	ModelOutput model;
 
 	for (const ParsedCommand &cmd : commands) {
-		if (cmd.type == (uint8_t)CommandType::REGISTERS) {
+		if (cmd.type == (uint8_t)CommandType::INIT) {
+			// GEState::Save stores its command-compatible state block after the first 17 words.
+			// It includes the initial texture registers and all initial bone/world matrices.
+			const uint32_t start = cmd.ptr + 17 * 4;
+			const uint32_t end = cmd.ptr + cmd.size;
+			for (uint32_t offset = start; offset + 4 <= end; offset += 4) {
+				const uint32_t op = ReadU32(pushBuffer.data() + offset);
+				if ((op >> 24) == 0x0C)  // GE_CMD_END
+					break;
+				UpdateStateFromRegister(&state, op, &boneWord, &worldWord);
+			}
+		} else if (cmd.type == (uint8_t)CommandType::REGISTERS) {
 			const uint32_t count = cmd.size / 4;
 			for (uint32_t i = 0; i < count; ++i) {
 				const uint32_t op = ReadU32(pushBuffer.data() + cmd.ptr + (size_t)i * 4);

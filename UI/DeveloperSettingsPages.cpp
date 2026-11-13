@@ -89,6 +89,7 @@ static void BuildTextureReplacementPage(SettingsPage *page) {
 	using namespace UI;
 
 	page->Header("Texture Replacement");
+	page->Setting(&g_Config.bEnableGLBManager);
 	page->Setting(&g_Config.bSaveNewTextures);
 	page->Setting(&g_Config.bReplaceTextures);
 

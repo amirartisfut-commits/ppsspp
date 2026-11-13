@@ -369,6 +369,7 @@ public:
 	int iMultiSampleLevel;
 	int bHighQualityDepth;
 	bool bReplaceTextures;
+	bool bEnableGLBManager;
 	bool bSaveNewTextures;
 	int iReplacementTextureLoadSpeed;
 	bool bIgnoreTextureFilenames;

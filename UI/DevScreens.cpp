@@ -69,6 +69,7 @@
 #include "Core/MIPS/JitCommon/JitCommon.h"
 #include "Core/MIPS/JitCommon/JitState.h"
 #include "GPU/Debugger/Record.h"
+#include "GPU/Debugger/GLBExport.h"
 #include "GPU/GPUCommon.h"
 #include "GPU/GPUState.h"
 
@@ -245,8 +246,21 @@ void SaveFrameDump() {
 	if (!gpu) {
 		return;
 	}
-	gpu->GetRecorder()->RecordNextFrame([](const Path &dumpPath) {
+	const bool exportGLB = g_Config.bEnableGLBManager;
+	gpu->GetRecorder()->RecordNextFrame([exportGLB](const Path &dumpPath) {
 		OnFrameDumpCreated(dumpPath, true);
+		if (exportGLB) {
+			System_RunOnMainThread([dumpPath]() {
+				Path glbPath;
+				std::string error;
+				if (GPURecord::ExportFrameDumpToGLB(dumpPath, &glbPath, &error)) {
+					g_OSD.Show(OSDType::MESSAGE_SUCCESS, glbPath.GetFilename(), 7.0f, "glbmanager");
+				} else {
+					ERROR_LOG(Log::G3D, "GLB Manager export failed: %s", error.c_str());
+					g_OSD.Show(OSDType::MESSAGE_ERROR, error);
+				}
+			});
+		}
 	});
 }
 

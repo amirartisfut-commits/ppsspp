@@ -1,5 +1,8 @@
 name: Manual Generate Android APK
 on:
+  push:
+    branches:
+      - master
   workflow_dispatch:
     inputs:
 
@@ -18,7 +21,7 @@ on:
 jobs:
 
   apk:
-    name: Generate ${{ github.event.inputs.buildVariant }} APK
+    name: Generate ${{ github.event.inputs.buildVariant || 'NormalOptimized' }} APK
     runs-on: ubuntu-latest
 
     steps:
@@ -61,7 +64,7 @@ jobs:
           gradle --quiet androidGitVersion
       
       - name: Assemble APK
-        run: ./gradlew assemble${{ github.event.inputs.buildVariant }} --stacktrace
+        run: ./gradlew assemble${{ github.event.inputs.buildVariant || 'NormalOptimized' }} --stacktrace
       
       #- name: Gradle Test
       #  run: bash ./gradlew test${{ github.event.inputs.buildVariant }}UnitTest --stacktrace

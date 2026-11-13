@@ -1013,6 +1013,8 @@ static constexpr ConfigSetting graphicsSettings[] = {
 
 	ConfigSetting("ReplaceTextures", SETTING(g_Config, bReplaceTextures), true, CfgFlag::PER_GAME | CfgFlag::REPORT)
 		.Label(I18NCat::DEVELOPER, "Replace textures"),
+	ConfigSetting("EnableGLBManager", SETTING(g_Config, bEnableGLBManager), false, CfgFlag::PER_GAME | CfgFlag::REPORT)
+		.Label(I18NCat::DEVELOPER, "GLB Manager"),
 	ConfigSetting("SaveNewTextures", SETTING(g_Config, bSaveNewTextures), false, CfgFlag::PER_GAME | CfgFlag::REPORT)
 		.Label(I18NCat::DEVELOPER, "Save new textures"),
 	ConfigSetting("IgnoreTextureFilenames", SETTING(g_Config, bIgnoreTextureFilenames), false, CfgFlag::PER_GAME),
