@@ -171,7 +171,7 @@ static bool ReadDump(const Path &path, std::vector<ParsedCommand> *commands, std
 
 	uint32_t version = ReadU32(file.data() + 8);
 	if (version < 5 || version > VERSION) {
-		*error = "Only PPDMP versions 5 and 6 are supported by GLB Manager.";
+		*error = "ARTiS supports PPDMP versions 5 and 6 in this build.";
 		return false;
 	}
 
@@ -1238,6 +1238,8 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 		<< "\"The GLB is a static reconstruction of the captured frame.\","
 		<< "\"For weighted draws, captured GE bone matrices and vertex weights are evaluated and baked into the exported positions.\","
 		<< "\"A PPDMP frame does not contain a named joint hierarchy, bind/rest pose, or animation clips.\","
+		<< "\"Raw per-vertex weights and indices remain in the original PPDMP push buffer; draw_calls vertex_buffer_offset and index_buffer_offset refer to offsets in that decompressed buffer.\","
+		<< "\"If a saved PNG is missing, geometry is kept with a neutral material; absent UV or normal fields receive safe defaults.\","
 		<< "\"Texture filenames are matched to PSP texture addresses using the first eight hexadecimal characters.\","
 		<< "\"Draws skipped from the GLB remain listed with a skip_reason so unsupported data is not silently discarded.\"]}";
 	if (!WriteTextFile(reportPath, report.str())) {
