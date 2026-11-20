@@ -766,8 +766,18 @@ static std::string BuildJson(const ModelOutput &model) {
 		json << "{\"bufferView\":" << a.view << ",\"componentType\":" << a.componentType
 			<< ",\"count\":" << a.count << ",\"type\":\"" << a.type << "\"";
 		if (a.hasBounds) {
-			json << ",\"min\":[" << a.min[0] << "," << a.min[1] << "," << a.min[2] << "]";
-			json << ",\"max\":[" << a.max[0] << "," << a.max[1] << "," << a.max[2] << "]";
+			const int components = std::strcmp(a.type, "VEC2") == 0 ? 2 : 3;
+			json << ",\"min\":[";
+			for (int j = 0; j < components; ++j) {
+				if (j) json << ",";
+				json << a.min[j];
+			}
+			json << "],\"max\":[";
+			for (int j = 0; j < components; ++j) {
+				if (j) json << ",";
+				json << a.max[j];
+			}
+			json << "]";
 		}
 		json << "}";
 	}
@@ -991,7 +1001,7 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 					const uint32_t primitiveType = (op >> 16) & 7;
 					const uint32_t requestedCount = op & 0xFFFF;
 				const uint32_t indexCount = indexType == 0 ? std::min(requestedCount, vertexCount) :
-					(indexSize > 0 ? (uint32_t)(pending.indices.size() / (size_t)indexSize) : 0);
+					(indexSize > 0 ? std::min(requestedCount, (uint32_t)(pending.indices.size() / (size_t)indexSize)) : 0);
 				int textureSlot = -1;
 				uint32_t textureAddress = 0;
 				Path texturePath;
