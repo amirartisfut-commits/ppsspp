@@ -826,7 +826,7 @@ static uint32_t ReadBE32(const uint8_t *p) {
 static bool ReadPNGDimensions(const Path &path, uint32_t *width, uint32_t *height) {
 	std::vector<uint8_t> png;
 	if (!ReadFileBytes(path, &png) || png.size() < 24 ||
-		std::memcmp(png.data(), "\\x89PNG\\r\\n\\x1a\\n", 8) != 0)
+		std::memcmp(png.data(), "\x89PNG\r\n\x1a\n", 8) != 0)
 		return false;
 	*width = ReadBE32(png.data() + 16);
 	*height = ReadBE32(png.data() + 20);
