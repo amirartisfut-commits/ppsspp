@@ -538,7 +538,6 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 	if (vertexCount < 3)
 		return false;
 
-	uint32_t textureAddress = 0;
 	Path texturePath;
 	for (int level = 0; level < 8; ++level) {
 		const uint32_t candidate = TextureAddress(state, level);
@@ -546,7 +545,6 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 		std::snprintf(prefix, sizeof(prefix), "%08x", candidate);
 		auto it = textures.find(prefix);
 		if (candidate != 0 && it != textures.end()) {
-			textureAddress = candidate;
 			texturePath = it->second;
 			break;
 		}
