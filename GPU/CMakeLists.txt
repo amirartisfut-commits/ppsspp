@@ -163,6 +163,8 @@ set(GPU_SOURCES
 	Debugger/GECommandTable.h
 	Debugger/Playback.cpp
 	Debugger/Playback.h
+	Debugger/GLBExport.cpp
+	Debugger/GLBExport.h
 	Debugger/Record.cpp
 	Debugger/Record.h
 	Debugger/RecordFormat.h
