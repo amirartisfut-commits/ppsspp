@@ -69,6 +69,7 @@
 #include "Core/MIPS/JitCommon/JitCommon.h"
 #include "Core/MIPS/JitCommon/JitState.h"
 #include "GPU/Debugger/Record.h"
+#include "GPU/Debugger/GLBExport.h"
 #include "GPU/GPUCommon.h"
 #include "GPU/GPUState.h"
 
@@ -250,6 +251,40 @@ void SaveFrameDump() {
 	});
 }
 
+
+static void SaveARTiSCapture() {
+	if (!gpu) {
+		g_OSD.Show(OSDType::MESSAGE_ERROR, "ARTiS needs an active game.");
+		return;
+	}
+	const bool started = gpu->GetRecorder()->RecordNextFrame([](const Path &dumpPath) {
+		OnFrameDumpCreated(dumpPath, false);
+		System_RunOnMainThread([dumpPath]() {
+			Path glbPath;
+			std::string error;
+			if (GPURecord::ExportFrameDumpToGLB(dumpPath, &glbPath, &error)) {
+				const Path reportPath = dumpPath.WithReplacedExtension(".artis.json");
+				g_OSD.Show(OSDType::MESSAGE_SUCCESS,
+					glbPath.GetFilename() + " + " + reportPath.GetFilename(), 7.0f, "artis");
+				if (System_GetPropertyBool(SYSPROP_CAN_SHOW_FILE))
+					System_ShowFileInFolder(glbPath);
+			} else {
+				ERROR_LOG(Log::G3D, "ARTiS capture failed: %s", error.c_str());
+				g_OSD.Show(OSDType::MESSAGE_ERROR, error, 8.0f, "artis");
+				if (System_GetPropertyBool(SYSPROP_CAN_SHOW_FILE) &&
+					(error.find(".artis.json") != std::string::npos))
+					System_ShowFileInFolder(dumpPath.WithReplacedExtension(".artis.json"));
+			}
+		});
+	});
+	if (!started) {
+		g_OSD.Show(OSDType::MESSAGE_ERROR, "ARTiS could not start. A frame capture may already be running.");
+	} else {
+		g_OSD.Show(OSDType::MESSAGE_SUCCESS, "ARTiS capture started. Keep Edit Player visible.", 4.0f, "artis-start");
+	}
+}
+
+
 void DevMenuScreen::CreatePopupContents(UI::ViewGroup *parent) {
 	using namespace UI;
 	auto dev = GetI18NCategory(I18NCat::DEVELOPER);
@@ -273,6 +308,12 @@ void DevMenuScreen::CreatePopupContents(UI::ViewGroup *parent) {
 	if (PSP_CoreParameter().fileType != IdentifiedFileType::PPSSPP_GE_DUMP) {
 		items->Add(new Choice(dev->T("Create frame dump")))->OnClick.Add([](UI::EventParams &e) {
 			SaveFrameDump();
+		});
+	}
+
+	if (PSP_CoreParameter().fileType != IdentifiedFileType::PPSSPP_GE_DUMP) {
+		items->Add(new Choice("ARTiS"))->OnClick.Add([](UI::EventParams &e) {
+			SaveARTiSCapture();
 		});
 	}
 
