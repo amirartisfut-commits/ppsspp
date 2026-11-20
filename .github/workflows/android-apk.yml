@@ -1,0 +1,65 @@
+name: Build ARTiS Android APK
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'GPU/**'
+      - 'UI/**'
+      - 'Core/**'
+      - 'android/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-apk:
+    name: Build PPSSPP ARTiS APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779
+        with:
+          ndk-version: r29
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build normal debug APK
+        run: ./gradlew :android:assembleNormalDebug --no-daemon --stacktrace
+
+      - name: Verify and package APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_DIR="android/build/outputs/apk/normal/debug"
+          mkdir -p dist
+          find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' -print
+          test -n "$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          cp "$APK_DIR"/*.apk dist/
+          (cd dist && zip -9 -q PPSSPP-ARTiS-Android-APK.zip ./*.apk)
+          sha256sum dist/*.apk dist/*.zip
+
+      - name: Upload APK and ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PPSSPP-ARTiS-Android-APK
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
