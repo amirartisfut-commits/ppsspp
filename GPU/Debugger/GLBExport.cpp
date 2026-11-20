@@ -1062,12 +1062,22 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 					<< ",\"vertex_count\":" << vertexCount
 					<< ",\"vertex_bytes\":" << pending.vertices.size()
 					<< ",\"uv_format\":\"" << (layoutSupported ? ComponentFormatName(layout.uvFormat, false) : "unsupported") << "\""
+					<< ",\"uv_format_code\":" << (layoutSupported ? layout.uvFormat : 0)
 					<< ",\"color_format_code\":" << (layoutSupported ? layout.colorFormat : 0)
 					<< ",\"normal_format\":\"" << (layoutSupported ? ComponentFormatName(layout.normalFormat, true) : "unsupported") << "\""
+					<< ",\"normal_format_code\":" << (layoutSupported ? layout.normalFormat : 0)
 					<< ",\"position_format\":\"" << (layoutSupported ? ComponentFormatName(layout.positionFormat, true) : "unsupported") << "\""
+					<< ",\"position_format_code\":" << (layoutSupported ? layout.positionFormat : 0)
 					<< ",\"weight_format\":\"" << (layoutSupported ? ComponentFormatName(layout.weightFormat, false) : "unsupported") << "\""
+					<< ",\"weight_format_code\":" << (layoutSupported ? layout.weightFormat : 0)
 					<< ",\"weight_count\":" << (layoutSupported ? layout.weightCount : 0)
+					<< ",\"field_offsets\":{\"weights\":" << (layoutSupported ? layout.weightOffset : -1)
+					<< ",\"uv\":" << (layoutSupported ? layout.uvOffset : -1)
+					<< ",\"color\":" << (layoutSupported ? layout.colorOffset : -1)
+					<< ",\"normal\":" << (layoutSupported ? layout.normalOffset : -1)
+					<< ",\"position\":" << (layoutSupported ? layout.positionOffset : -1) << "}"
 					<< ",\"index_format\":\"" << IndexFormatName(indexType) << "\""
+					<< ",\"index_format_code\":" << indexType
 					<< ",\"index_count\":" << indexCount
 					<< ",\"index_bytes\":" << pending.indices.size()
 					<< ",\"morph_count\":" << (layoutSupported ? layout.morphCount : 0)
