@@ -68,6 +68,8 @@ struct PendingDraw {
 	std::vector<uint8_t> vertices;
 	std::vector<uint8_t> indices;
 	GPUStateSnapshot state;
+	uint32_t vertexBufferOffset = 0;
+	uint32_t indexBufferOffset = 0;
 	bool haveVertices = false;
 };
 
@@ -273,7 +275,9 @@ static bool MakeVertexLayout(uint32_t vertexType, VertexLayout *layout) {
 	layout->positionFormat = (vertexType >> 7) & 3;
 	layout->morphCount = ((vertexType >> 18) & 7) + 1;
 
-	if (layout->morphCount != 1 || layout->positionFormat == 0 || layout->uvFormat == 0 || layout->normalFormat == 0)
+	// Position data is required to build geometry. UVs and normals are optional
+	// in PSP vertex formats; absent attributes are assigned safe defaults.
+	if (layout->morphCount != 1 || layout->positionFormat == 0)
 		return false;
 
 	int offset = 0;
@@ -293,8 +297,8 @@ static bool MakeVertexLayout(uint32_t vertexType, VertexLayout *layout) {
 	const int weightAlignment = weightSize ? weightSize : 1;
 	addField(weightSize * layout->weightCount, weightAlignment, &layout->weightOffset);
 
-	const int uvSize = layout->uvFormat == 1 ? 2 : layout->uvFormat == 2 ? 4 : 8;
-	const int uvAlignment = layout->uvFormat == 1 ? 1 : layout->uvFormat == 2 ? 2 : 4;
+	const int uvSize = layout->uvFormat == 0 ? 0 : layout->uvFormat == 1 ? 2 : layout->uvFormat == 2 ? 4 : 8;
+	const int uvAlignment = layout->uvFormat == 1 ? 1 : layout->uvFormat == 2 ? 2 : layout->uvFormat == 3 ? 4 : 1;
 	addField(uvSize, uvAlignment, &layout->uvOffset);
 
 	const int colorSizeTable[8] = { 0, 0, 0, 0, 2, 2, 2, 4 };
@@ -479,6 +483,21 @@ static bool AddTextureMaterial(ModelOutput *model, const Path &texturePath, uint
 	return true;
 }
 
+static uint32_t AddDefaultMaterial(ModelOutput *model) {
+	const std::string key = "__ARTIS_UNTEXTURED__";
+	auto existing = model->materialByPath.find(key);
+	if (existing != model->materialByPath.end())
+		return existing->second;
+
+	const uint32_t material = (uint32_t)model->materialsJson.size();
+	model->materialsJson.push_back(
+		"{\"name\":\"ARTiS_Untextured\",\"doubleSided\":true,"
+		"\"pbrMetallicRoughness\":{\"baseColorFactor\":[0.82,0.82,0.82,1],"
+		"\"metallicFactor\":0,\"roughnessFactor\":1}}");
+	model->materialByPath[key] = material;
+	return material;
+}
+
 static std::string JsonEscape(const std::string &value) {
 	std::string result;
 	result.reserve(value.size() + 8);
@@ -532,8 +551,8 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 			break;
 		}
 	}
-	if (textureAddress == 0 || texturePath.empty())
-		return false;
+	// If a saved PNG is missing, keep the mesh. ARTiS will use a neutral
+	// material so geometry can still be inspected and the report remains useful.
 
 	const uint32_t primitiveType = (primOp >> 16) & 7;
 	const uint32_t requestedCount = primOp & 0xFFFF;
@@ -564,7 +583,7 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 		} else if (layout.uvFormat == 2) {
 			uv[0] = DecodeUnsignedComponent(v + layout.uvOffset, 2);
 			uv[1] = DecodeUnsignedComponent(v + layout.uvOffset + 2, 2);
-		} else {
+		} else if (layout.uvFormat == 3) {
 			uv[0] = DecodeUnsignedComponent(v + layout.uvOffset, 3);
 			uv[1] = DecodeUnsignedComponent(v + layout.uvOffset + 4, 3);
 		}
@@ -573,7 +592,7 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 			for (int j = 0; j < 3; ++j) n[j] = DecodeSignedComponent(v + layout.normalOffset + j, 1);
 		} else if (layout.normalFormat == 2) {
 			for (int j = 0; j < 3; ++j) n[j] = DecodeSignedComponent(v + layout.normalOffset + j * 2, 2);
-		} else {
+		} else if (layout.normalFormat == 3) {
 			for (int j = 0; j < 3; ++j) n[j] = DecodeSignedComponent(v + layout.normalOffset + j * 4, 3);
 		}
 
@@ -675,8 +694,8 @@ static bool BuildPrimitive(const PendingDraw &pending, uint32_t primOp, const st
 		return false;
 
 	uint32_t material = 0;
-	if (!AddTextureMaterial(model, texturePath, &material))
-		return false;
+	if (texturePath.empty() || !AddTextureMaterial(model, texturePath, &material))
+		material = AddDefaultMaterial(model);
 
 	PrimitiveInfo primitive;
 	primitive.positionAccessor = AddFloatAccessor(model, positions, 3, "VEC3", true);
@@ -721,8 +740,11 @@ static void UpdateStateFromRegister(GPUStateSnapshot *state, uint32_t op, int *b
 
 static std::string BuildJson(const ModelOutput &model) {
 	std::ostringstream json;
-	json << "{\"asset\":{\"version\":\"2.0\",\"generator\":\"PPSSPP GLB Manager\"},";
-	json << "\"scene\":0,\"scenes\":[{\"nodes\":[0]}],\"nodes\":[{\"name\":\"Player\",\"mesh\":0}],";
+	json << "{\"asset\":{\"version\":\"2.0\",\"generator\":\"PPSSPP ARTiS\"},";
+	json << "\"extras\":{\"sourceFormat\":\"PPDMP\",\"singleFramePose\":true,"
+		"\"capturedSkinWeightsBaked\":true,\"originalBoneHierarchyExported\":false,"
+		"\"animationClipsExported\":false},";
+	json << "\"scene\":0,\"scenes\":[{\"nodes\":[0]}],\"nodes\":[{\"name\":\"ARTiS_Player\",\"mesh\":0}],";
 	json << "\"meshes\":[{\"name\":\"Player\",\"primitives\":[";
 	for (size_t i = 0; i < model.primitives.size(); ++i) {
 		const PrimitiveInfo &p = model.primitives[i];
@@ -947,10 +969,6 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 	}
 
 	const std::map<std::string, Path> savedTextures = FindSavedTextures(gameID);
-	if (savedTextures.empty()) {
-		*error = "No saved PNGs were found. Enable Save new textures and capture the player again.";
-		return false;
-	}
 
 	GPUStateSnapshot state;
 	for (int i = 0; i < 12; ++i)
@@ -1034,8 +1052,6 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 						skipReason = "through_mode_2d_or_ui";
 					else if (!layoutSupported)
 						skipReason = "unsupported_vertex_layout";
-					else if (textureSlot < 0)
-						skipReason = "no_matching_saved_texture";
 					else if (!supportedPrimitive)
 						skipReason = "unsupported_primitive_type";
 					else if (vertexCount < 3 || indexCount < 3)
@@ -1047,6 +1063,8 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 				std::ostringstream draw;
 				draw << "{\"draw_index\":" << (drawReports.size() + 1)
 					<< ",\"command_index\":" << commandIndex
+					<< ",\"vertex_buffer_offset\":" << pending.vertexBufferOffset
+					<< ",\"index_buffer_offset\":" << pending.indexBufferOffset
 					<< ",\"primitive_type\":\"" << PrimitiveTypeName(primitiveType) << "\""
 					<< ",\"primitive_type_code\":" << primitiveType
 					<< ",\"requested_count\":" << requestedCount
@@ -1153,10 +1171,12 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 			}
 		} else if (cmd.type == (uint8_t)CommandType::INDICES) {
 			pending.indices.assign(pushBuffer.begin() + cmd.ptr, pushBuffer.begin() + cmd.ptr + cmd.size);
+			pending.indexBufferOffset = cmd.ptr;
 			indexBytes += cmd.size;
 			++indexBlocks;
 		} else if (cmd.type == (uint8_t)CommandType::VERTICES) {
 			pending.vertices.assign(pushBuffer.begin() + cmd.ptr, pushBuffer.begin() + cmd.ptr + cmd.size);
+			pending.vertexBufferOffset = cmd.ptr;
 			pending.state = state;
 			pending.haveVertices = true;
 			vertexBytes += cmd.size;
@@ -1226,7 +1246,7 @@ bool ExportFrameDumpToGLB(const Path &dumpPath, Path *outputPath, std::string *e
 	}
 
 	if (model.primitives.empty()) {
-		*error = "No textured 3D player geometry was found. ARTiS diagnostics were saved to " + reportPath.GetFilename() + ". Capture the Edit Player model while it is visible.";
+		*error = "No supported 3D player geometry was found. ARTiS diagnostics were saved to " + reportPath.GetFilename() + ". Capture the Edit Player model while it is visible.";
 		return false;
 	}
 
